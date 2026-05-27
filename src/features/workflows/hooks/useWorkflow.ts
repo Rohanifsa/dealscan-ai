@@ -1,15 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getDemoWorkflow, subscribeDemoStore } from "@/lib/demoStore";
+import { trpc } from "@/lib/trpc/provider";
 
 export function useWorkflow(id: string) {
-  const [data, setData] = useState(() => getDemoWorkflow(id));
-
-  useEffect(
-    () => subscribeDemoStore(() => setData(getDemoWorkflow(id))),
-    [id],
-  );
-
-  return { data, isLoading: false, error: null, refetch: () => setData(getDemoWorkflow(id)) };
+  return trpc.workflows.getById.useQuery({ id });
 }
