@@ -1,7 +1,16 @@
 "use client";
 
-import { trpc } from "@/lib/trpc/provider";
+import { useEffect, useState } from "react";
+import { getDemoDiscrepancies, subscribeDemoStore } from "@/lib/demoStore";
 
 export function useDiscrepancies(workflowId: string) {
-  return trpc.discrepancies.getByWorkflow.useQuery({ workflowId });
+  const [data, setData] = useState(() => getDemoDiscrepancies(workflowId));
+
+  useEffect(
+    () =>
+      subscribeDemoStore(() => setData(getDemoDiscrepancies(workflowId))),
+    [workflowId],
+  );
+
+  return { data, isLoading: false, error: null, refetch: () => setData(getDemoDiscrepancies(workflowId)) };
 }

@@ -42,8 +42,8 @@ export default function ReviewPage({ params }: PageProps) {
   const groups = useMemo(() => {
     const groupMap = new Map<string, typeof pendingReview>();
     for (const d of pendingReview) {
-      const sourceType = d.source_doc?.doc_type ?? "N/A";
-      const compareType = d.compare_doc?.doc_type ?? "N/A";
+      const sourceType = (d.source_doc as any)?.type ?? "N/A";
+      const compareType = (d.compare_doc as any)?.type ?? "N/A";
       const key = `${sourceType} ↔ ${compareType}`;
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(d);
@@ -54,8 +54,8 @@ export default function ReviewPage({ params }: PageProps) {
   const reviewedGroups = useMemo(() => {
     const groupMap = new Map<string, typeof reviewed>();
     for (const d of reviewed) {
-      const sourceType = d.source_doc?.doc_type ?? "N/A";
-      const compareType = d.compare_doc?.doc_type ?? "N/A";
+      const sourceType = (d.source_doc as any)?.type ?? "N/A";
+      const compareType = (d.compare_doc as any)?.type ?? "N/A";
       const key = `${sourceType} ↔ ${compareType}`;
       if (!groupMap.has(key)) groupMap.set(key, []);
       groupMap.get(key)!.push(d);

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { trpc } from "@/lib/trpc/provider";
+import { reviewDemoDiscrepancy } from "@/lib/demoStore";
 
 interface Discrepancy {
   id: string;
@@ -50,27 +50,22 @@ export function DiscrepancyReviewCard({
 }: DiscrepancyReviewCardProps) {
   const [note, setNote] = useState(discrepancy.analyst_note ?? "");
 
-  const utils = trpc.useUtils();
+  const [isPending, setIsPending] = useState(false);
 
-  const approve = trpc.discrepancies.approveReview.useMutation({
-    onSuccess: () => {
-      toast.success("Red flag cleared.");
-      onReviewed();
-      utils.discrepancies.getByWorkflow.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const reject = trpc.discrepancies.rejectReview.useMutation({
-    onSuccess: () => {
-      toast.success("Management query will be generated.");
-      onReviewed();
-      utils.discrepancies.getByWorkflow.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const isPending = approve.isPending || reject.isPending;
+  function handleReview(approved: boolean) {
+    setIsPending(true);
+    reviewDemoDiscrepancy({
+      id: discrepancy.id,
+      workflowId: discrepancy.workflow_id,
+      approved,
+      analystNote: note,
+    });
+    toast.success(
+      approved ? "Red flag cleared." : "Management query generated.",
+    );
+    setIsPending(false);
+    onReviewed();
+  }
   // isApproved / isRejected only when a human has explicitly made a decision
   const isApproved =
     discrepancy.status === "APPROVED" && !!discrepancy.resolved_by;
@@ -192,11 +187,7 @@ export function DiscrepancyReviewCard({
                   className="border-green-300 text-green-700 hover:bg-green-50"
                   disabled={isPending}
                   onClick={() =>
-                    approve.mutate({
-                      id: discrepancy.id,
-                      workflowId: discrepancy.workflow_id,
-                      analystNote: note,
-                    })
+                    handleReview(true)
                   }
                 >
                   <CheckCircle
@@ -211,11 +202,7 @@ export function DiscrepancyReviewCard({
                   className="border-red-300 text-red-700 hover:bg-red-50"
                   disabled={isPending}
                   onClick={() =>
-                    reject.mutate({
-                      id: discrepancy.id,
-                      workflowId: discrepancy.workflow_id,
-                      analystNote: note,
-                    })
+                    handleReview(false)
                   }
                 >
                   <XCircle
