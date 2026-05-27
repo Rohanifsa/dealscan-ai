@@ -1,8 +1,7 @@
-import type { NextRequest } from "next/server";
-import { authProxy } from "@/features/auth/server/middleware";
+import { NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
-  return authProxy(request);
+export function proxy() {
+  return NextResponse.next();
 }
 
 export const config = {

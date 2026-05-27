@@ -4,8 +4,7 @@ import { toast } from "sonner";
 import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { runDemoDiligence } from "@/lib/demoStore";
-import { useState } from "react";
+import { trpc } from "@/lib/trpc/provider";
 
 interface TriggerProcessingButtonProps {
   workflowId: string;
@@ -16,27 +15,28 @@ export function TriggerProcessingButton({
   workflowId,
   hasAllDocTypes,
 }: TriggerProcessingButtonProps) {
-  const [isPending, setIsPending] = useState(false);
+  const utils = trpc.useUtils();
 
-  function handleRun() {
-    setIsPending(true);
-    runDemoDiligence(workflowId);
-    setIsPending(false);
-    toast.success("Diligence review complete. Red flags generated.");
-  }
+  const triggerMutation = trpc.documents.triggerProcessing.useMutation({
+    onSuccess: () => {
+      utils.workflows.getById.invalidate({ id: workflowId });
+      toast.success("Diligence review started! The AI pipeline is now running.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   return (
     <Button
-      onClick={handleRun}
-      disabled={!hasAllDocTypes || isPending}
+      onClick={() => triggerMutation.mutate({ workflowId })}
+      disabled={!hasAllDocTypes || triggerMutation.isPending}
       size="lg"
     >
-      {isPending ? (
+      {triggerMutation.isPending ? (
         <Spinner className="mr-2 size-4" data-icon="inline-start" />
       ) : (
         <Zap className="mr-2 size-4" data-icon="inline-start" />
       )}
-      {isPending ? "Starting..." : "Start Diligence Review"}
+      {triggerMutation.isPending ? "Starting..." : "Start Diligence Review"}
     </Button>
   );
 }

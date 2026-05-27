@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { createDemoWorkflow } from "@/lib/demoStore";
+import { trpc } from "@/lib/trpc/provider";
 
 interface CreateWorkflowDialogProps {
   open: boolean;
@@ -32,24 +32,30 @@ export function CreateWorkflowDialog({
   onOpenChange,
 }: CreateWorkflowDialogProps) {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isPending, setIsPending] = useState(false);
+
+  const createMutation = trpc.workflows.create.useMutation({
+    onSuccess: (data) => {
+      utils.workflows.getAll.invalidate();
+      onOpenChange(false);
+      setName("");
+      setDescription("");
+      router.push(`/workflow/${data.id}/documents`);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setIsPending(true);
-    const workflow = createDemoWorkflow({
+    createMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
     });
-    toast.success("Deal room created.");
-    onOpenChange(false);
-    setName("");
-    setDescription("");
-    setIsPending(false);
-    router.push(`/workflow/${workflow.id}/documents`);
   }
 
   return (
@@ -67,7 +73,7 @@ export function CreateWorkflowDialog({
                 placeholder="e.g. Winn Foods buyout"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={isPending}
+                disabled={createMutation.isPending}
               />
             </Field>
             <Field>
@@ -76,7 +82,7 @@ export function CreateWorkflowDialog({
                 placeholder="Optional description..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                disabled={isPending}
+                disabled={createMutation.isPending}
                 rows={3}
               />
               <FieldDescription>
@@ -89,15 +95,15 @@ export function CreateWorkflowDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isPending}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || isPending}
+              disabled={!name.trim() || createMutation.isPending}
             >
-              {isPending && (
+              {createMutation.isPending && (
                 <Spinner className="mr-2 size-4" data-icon="inline-start" />
               )}
               Create Deal Room

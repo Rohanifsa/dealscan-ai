@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
-import { addDemoDocument } from "@/lib/demoStore";
+import { trpc } from "@/lib/trpc/provider";
 
 import { DOC_TYPE_LABELS } from "@/features/documents/utils/docTypeLabels";
 
@@ -28,11 +28,22 @@ export function DocumentUploader({
   workflowId,
   onUploaded,
 }: DocumentUploaderProps) {
+  const utils = trpc.useUtils();
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<DocType | "">("");
   const [dragging, setDragging] = useState(false);
-  const [isPending, setIsPending] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const uploadMutation = trpc.documents.upload.useMutation({
+    onSuccess: () => {
+      utils.documents.getByWorkflow.invalidate({ workflowId });
+      setFile(null);
+      setDocType("");
+      toast.success("Document uploaded successfully.");
+      onUploaded?.();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -43,17 +54,18 @@ export function DocumentUploader({
 
   async function handleUpload() {
     if (!file || !docType) return;
-    setIsPending(true);
-    addDemoDocument({
-      workflowId,
-      type: docType,
-      fileName: file.name,
-    });
-    setFile(null);
-    setDocType("");
-    setIsPending(false);
-    toast.success("Document uploaded and demo fields extracted.");
-    onUploaded?.();
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1] ?? "";
+      uploadMutation.mutate({
+        workflowId,
+        type: docType as DocType,
+        fileName: file.name,
+        fileBase64: base64,
+        mimeType: file.type || "application/pdf",
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -113,15 +125,15 @@ export function DocumentUploader({
 
       <Button
         onClick={handleUpload}
-        disabled={!file || !docType || isPending}
+        disabled={!file || !docType || uploadMutation.isPending}
         className="w-full"
       >
-        {isPending ? (
+        {uploadMutation.isPending ? (
           <Spinner className="mr-2 size-4" data-icon="inline-start" />
         ) : (
           <FileText className="mr-2 size-4" data-icon="inline-start" />
         )}
-        {isPending ? "Uploading..." : "Upload Document"}
+        {uploadMutation.isPending ? "Uploading..." : "Upload Document"}
       </Button>
     </div>
   );
